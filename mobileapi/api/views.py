@@ -1,31 +1,31 @@
-from django.views.decorators.http import require_http_methods
-from django.http import JsonResponse, HttpRequest, HttpResponse
+from rest_framework.response import Response
+from rest_framework.decorators import api_view
+from rest_framework.request import Request
 
 from .models import Unit, Worker, Visit
-
 import json
 
 
-@require_http_methods(['GET'])
-def get_units(req: HttpRequest, ph: str):
+@api_view(['GET'])
+def get_units(req: Request, ph: str):
     try:
         worker = Worker.objects.get(phone_number=ph)
     except Worker.DoesNotExist:
-        return HttpResponse(status=404)
+        return Response(status=404)
 
     units: list[Unit] = Unit.objects.filter(worker=worker).all()
-    return JsonResponse([{
+    return Response([{
         'pk': unit.pk,
         'name': unit.name
-    } for unit in units], safe=False)
+    } for unit in units])
 
 
-@require_http_methods(['POST'])
-def make_visit(req: HttpRequest, ph: str):
+@api_view(['POST'])
+def make_visit(req: Request, ph: str):
     try:
         worker = Worker.objects.get(phone_number=ph)
     except Worker.DoesNotExist:
-        return HttpResponse(status=404)
+        return Response(status=404)
 
     data = json.loads(req.body.decode('utf-8'))
 
@@ -36,15 +36,15 @@ def make_visit(req: HttpRequest, ph: str):
 
     if pk == None or coordinates == None or latitude == None or longitude == None:
         print(pk, coordinates, latitude, longitude)
-        return HttpResponse(status=400)
+        return Response(status=400)
 
     try:
         unit = Unit.objects.get(pk=pk)
     except Unit.DoesNotExist:
-        return HttpResponse(status=404)
+        return Response(status=404)
 
     if worker != unit.worker:
-        return HttpResponse(status=400)
+        return Response(status=400)
 
     visit = Visit.objects.create(
         unit=unit,
@@ -52,7 +52,7 @@ def make_visit(req: HttpRequest, ph: str):
         longitude=float(longitude)
     )
 
-    return JsonResponse({
+    return Response({
         'pk': visit.pk,
         'date_time': visit.datetime
-    }, safe=False)
+    })
